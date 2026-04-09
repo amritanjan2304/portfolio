@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!--
+  =============================================
+  PROJECT : Kosha - Personal Finance Tracker
+  STUDENT : Asif
+  CLASS   : Web Development Assignment
+  DATE    : 2024
+  =============================================
+  
+  PAGES IN THIS APP:
+  1. Dashboard  - shows summary cards and charts
+  2. Transactions - list of all income/expenses
+  3. Budgets    - monthly spending limits
+  4. Reports    - trend charts
+  5. Goals      - savings goals tracker
+  
+  DATA STORAGE: localStorage (browser storage)
+  CHARTS LIBRARY: Chart.js (CDN)
+
+  FILE STRUCTURE:
+  - index.html   → structure / markup (this file)
+  - styles.css   → all visual styling
+  - script.js    → all app logic & interactivity
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kosha - My Finance Tracker</title>
+
+    <!-- Google Fonts - using two fonts: one for headings, one for body -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Chart.js library for drawing charts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+    <!-- External stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <!-- Background decorative orbs -->
+    <div class="ambient-container">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Main layout wrapper -->
+    <div class="app-layout">
+
+        <!-- =====================
+             SIDEBAR / LEFT MENU
+             ===================== -->
+        <nav class="sidebar">
+
+            <!-- App logo -->
+            <div class="logo-area">
+                <div class="logo-icon">₹</div>
+                <div>
+                    <div class="logo-text-name">Kosha</div>
+                    <div class="logo-text-sub">Wealth Manager</div>
+                </div>
+            </div>
+
+            <!-- User profile (click to edit name) -->
+            <div class="user-card" onclick="editUserName()">
+                <div class="user-avatar" id="userAvatarEl">AS</div>
+                <div>
+                    <div class="user-name" id="userNameEl">Asif</div>
+                    <div class="user-badge">✦ Premium</div>
+                </div>
+            </div>
+
+            <!-- Navigation links -->
+            <div class="nav-section-label">Navigation</div>
+
+            <button class="nav-btn active" onclick="goToPage('dashboard', this)">
+                <span class="nav-icon">⬡</span>Dashboard
+            </button>
+
+            <button class="nav-btn" onclick="goToPage('transactions', this)">
+                <span class="nav-icon">⇄</span>Transactions
+                <span class="count-badge" id="txnCountBadge">0</span>
+            </button>
+
+            <button class="nav-btn" onclick="goToPage('budgets', this)">
+                <span class="nav-icon">◈</span>Budgets
+            </button>
+
+            <button class="nav-btn" onclick="goToPage('reports', this)">
+                <span class="nav-icon">◉</span>Reports
+            </button>
+
+            <button class="nav-btn" onclick="goToPage('goals', this)">
+                <span class="nav-icon">◎</span>Savings Goals
+            </button>
+
+            <!-- Dividers -->
+            <div class="divider"></div>
+            <div class="divider-gold"></div>
+            <div class="divider"></div>
+
+            <!-- Utility actions -->
+            <button class="sidebar-action-btn" onclick="exportToCSV()">↑ Export CSV</button>
+            <button class="sidebar-action-btn" id="themeToggleBtn" onclick="toggleTheme()">◑ Light Mode</button>
+            <button class="sidebar-action-btn" onclick="clearAllData()" style="color: var(--red)">⊗ Clear All Data</button>
+
+        </nav>
+
+        <!-- =====================
+             MAIN AREA
+             ===================== -->
+        <div class="main-content">
+
+            <!-- Top bar with title and add button -->
+            <div class="topbar">
+                <div>
+                    <div class="page-title" id="pageTitleEl">Dashboard</div>
+                    <div class="page-subtitle" id="pageSubtitleEl">Your financial overview</div>
+                </div>
+                <div class="topbar-right">
+                    <span style="font-size: 12px; color: var(--text-faint);" id="lastUpdatedEl"></span>
+                    <button class="icon-btn" onclick="toggleTheme()">◑</button>
+                    <button class="add-btn" onclick="openAddModal()">＋ Add Transaction</button>
+                </div>
+            </div>
+
+            <!-- All page content goes here -->
+            <div class="page-content">
+
+                <!-- ============================
+                     PAGE 1: DASHBOARD
+                     ============================ -->
+                <div id="page-dashboard">
+
+                    <!-- 4 summary cards -->
+                    <div class="summary-grid" id="summaryGridEl"></div>
+
+                    <!-- Charts row -->
+                    <div style="display: grid; grid-template-columns: 360px 1fr; gap: 18px;">
+
+                        <!-- Donut chart - spending by category -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <div class="card-title">Spending by Category</div>
+                                    <div class="card-sub">This month's breakdown</div>
+                                </div>
+                                <select class="filter-select" id="donutPeriodSelect" onchange="drawDonutChart(this.value)">
+                                    <option value="month">This Month</option>
+                                    <option value="3months">Last 3 Months</option>
+                                    <option value="year">This Year</option>
+                                    <option value="all">All Time</option>
+                                </select>
+                            </div>
+                            <div class="donut-wrapper">
+                                <div class="donut-canvas-wrap">
+                                    <canvas id="donutChartCanvas" width="160" height="160"></canvas>
+                                    <div class="donut-center">
+                                        <div class="donut-total" id="donutTotalEl">₹0</div>
+                                        <div class="donut-label">spent</div>
+                                    </div>
+                                </div>
+                                <div class="donut-legend" id="donutLegendEl"></div>
+                            </div>
+                        </div>
+
+                        <!-- Bar chart - income vs expenses -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <div class="card-title">Monthly Overview</div>
+                                    <div class="card-sub">Income vs Expenses (₹)</div>
+                                </div>
+                                <select class="filter-select" onchange="drawBarChart(this.value)">
+                                    <option value="6">6 Months</option>
+                                    <option value="12">12 Months</option>
+                                </select>
+                            </div>
+                            <div style="height: 240px; position: relative;">
+                                <canvas id="barChartCanvas"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Recent transactions table -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Recent Transactions</div>
+                                <div class="card-sub">Last 5 entries</div>
+                            </div>
+                            <button class="filter-select" style="cursor: pointer; color: var(--gold); border-color: var(--border-gold);"
+                                onclick="goToPage('transactions', document.querySelectorAll('.nav-btn')[1])">
+                                View all →
+                            </button>
+                        </div>
+                        <table class="data-table" id="dashboardTxnTable"></table>
+                    </div>
+
+                </div><!-- end dashboard page -->
+
+
+                <!-- ============================
+                     PAGE 2: TRANSACTIONS
+                     ============================ -->
+                <div id="page-transactions" style="display: none;">
+
+                    <!-- Search + filters -->
+                    <div class="filter-bar">
+                        <input class="search-input" placeholder="Search transactions…"
+                            id="searchInput" oninput="renderTransactionsPage()">
+
+                        <select class="combo-filter" id="categoryFilter" onchange="renderTransactionsPage()">
+                            <option value="">All Categories</option>
+                        </select>
+
+                        <select class="combo-filter" id="typeFilter" onchange="renderTransactionsPage()">
+                            <option value="">All Types</option>
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+
+                        <select class="combo-filter" id="monthFilter" onchange="renderTransactionsPage()">
+                            <option value="">All Time</option>
+                        </select>
+                    </div>
+
+                    <!-- Transactions table card -->
+                    <div class="card">
+                        <table class="data-table" id="fullTxnTable"></table>
+                        <div id="txnEmptyState" style="display: none;" class="empty-state">
+                            <div class="empty-icon">◎</div>
+                            <div class="empty-title">No transactions found</div>
+                            <div class="empty-sub">Add your first transaction above.</div>
+                        </div>
+                    </div>
+
+                </div><!-- end transactions page -->
+
+
+                <!-- ============================
+                     PAGE 3: BUDGETS
+                     ============================ -->
+                <div id="page-budgets" style="display: none;">
+
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+                        <button class="add-btn" onclick="openBudgetModal()">＋ Set Budget</button>
+                    </div>
+
+                    <div class="budget-grid" id="budgetGridEl"></div>
+
+                    <div id="budgetEmptyState" style="display: none;" class="empty-state">
+                        <div class="empty-icon">◈</div>
+                        <div class="empty-title">No budgets set</div>
+                        <div class="empty-sub">Create a budget to manage your monthly spend.</div>
+                    </div>
+
+                </div><!-- end budgets page -->
+
+
+                <!-- ============================
+                     PAGE 4: REPORTS
+                     ============================ -->
+                <div id="page-reports" style="display: none;">
+
+                    <div class="reports-grid">
+
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <div class="card-title">Income Trend</div>
+                                    <div class="card-sub">Monthly income</div>
+                                </div>
+                            </div>
+                            <div style="height: 200px; position: relative;"><canvas id="incomeChartCanvas"></canvas></div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <div class="card-title">Expense Trend</div>
+                                    <div class="card-sub">Monthly expenses</div>
+                                </div>
+                            </div>
+                            <div style="height: 200px; position: relative;"><canvas id="expenseChartCanvas"></canvas></div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <div class="card-title">Net Savings</div>
+                                    <div class="card-sub">Monthly savings</div>
+                                </div>
+                            </div>
+                            <div style="height: 200px; position: relative;"><canvas id="savingsChartCanvas"></canvas></div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <div class="card-title">Top Categories</div>
+                                    <div class="card-sub">All time spending</div>
+                                </div>
+                            </div>
+                            <div style="height: 200px; position: relative;"><canvas id="topCatChartCanvas"></canvas></div>
+                        </div>
+
+                    </div>
+                </div><!-- end reports page -->
+
+
+                <!-- ============================
+                     PAGE 5: SAVINGS GOALS
+                     ============================ -->
+                <div id="page-goals" style="display: none;">
+
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+                        <button class="add-btn" onclick="openGoalModal()">＋ New Goal</button>
+                    </div>
+
+                    <div class="goals-grid" id="goalsGridEl"></div>
+
+                    <div id="goalEmptyState" style="display: none;" class="empty-state">
+                        <div class="empty-icon">◎</div>
+                        <div class="empty-title">No savings goals</div>
+                        <div class="empty-sub">Set your first goal and track progress.</div>
+                    </div>
+
+                </div><!-- end goals page -->
+
+            </div><!-- end page-content -->
+        </div><!-- end main-content -->
+    </div><!-- end app-layout -->
+
+
+    <!-- =========================
+         MODAL 1: ADD TRANSACTION
+         ========================= -->
+    <div class="modal-overlay" id="txnModal">
+        <div class="modal-box">
+            <div class="modal-title">
+                <span id="modalTitleText">Add Transaction</span>
+                <div class="modal-close" onclick="closeAddModal()">×</div>
+            </div>
+
+            <!-- Income or Expense toggle -->
+            <div class="form-group">
+                <label class="form-label">Type</label>
+                <div class="type-toggle-grid">
+                    <button class="type-btn selected-income" id="incomeTypeBtn" onclick="selectType('income')">↑ Income</button>
+                    <button class="type-btn" id="expenseTypeBtn" onclick="selectType('expense')">↓ Expense</button>
+                </div>
+            </div>
+
+            <!-- Amount + Date -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Amount (₹)</label>
+                    <input class="form-input" type="number" id="amountInput" placeholder="0.00" min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input class="form-input" type="date" id="dateInput">
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <input class="form-input" type="text" id="descInput" placeholder="e.g. Grocery shopping at DMart">
+            </div>
+
+            <!-- Category + Note -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-input" id="categoryInput">
+                        <option>Food & Dining</option>
+                        <option>Transportation</option>
+                        <option>Housing & Rent</option>
+                        <option>Utilities</option>
+                        <option>Entertainment</option>
+                        <option>Shopping</option>
+                        <option>Healthcare</option>
+                        <option>Education</option>
+                        <option>Travel</option>
+                        <option>Salary</option>
+                        <option>Freelance</option>
+                        <option>Investment</option>
+                        <option>EMI / Loan</option>
+                        <option>Insurance</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Note (optional)</label>
+                    <input class="form-input" type="text" id="noteInput" placeholder="Additional note">
+                </div>
+            </div>
+
+            <!-- Save / Cancel -->
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+                <button class="btn-save" onclick="saveTransaction()">Save Transaction</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- =========================
+         MODAL 2: SET BUDGET
+         ========================= -->
+    <div class="modal-overlay" id="budgetModal">
+        <div class="modal-box">
+            <div class="modal-title">
+                Set Monthly Budget
+                <div class="modal-close" onclick="document.getElementById('budgetModal').classList.remove('open')">×</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select class="form-input" id="budgetCategoryInput">
+                    <option>Food & Dining</option>
+                    <option>Transportation</option>
+                    <option>Housing & Rent</option>
+                    <option>Utilities</option>
+                    <option>Entertainment</option>
+                    <option>Shopping</option>
+                    <option>Healthcare</option>
+                    <option>Education</option>
+                    <option>Travel</option>
+                    <option>EMI / Loan</option>
+                    <option>Insurance</option>
+                    <option>Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Monthly Limit (₹)</label>
+                <input class="form-input" type="number" id="budgetLimitInput" placeholder="e.g. 10000" min="1">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="document.getElementById('budgetModal').classList.remove('open')">Cancel</button>
+                <button class="btn-save" onclick="saveBudget()">Save Budget</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- =========================
+         MODAL 3: ADD GOAL
+         ========================= -->
+    <div class="modal-overlay" id="goalModal">
+        <div class="modal-box">
+            <div class="modal-title">
+                New Savings Goal
+                <div class="modal-close" onclick="document.getElementById('goalModal').classList.remove('open')">×</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Goal Name</label>
+                <input class="form-input" type="text" id="goalNameInput" placeholder="e.g. Trip to Goa, New Phone">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Target (₹)</label>
+                    <input class="form-input" type="number" id="goalTargetInput" placeholder="50000" min="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Already Saved (₹)</label>
+                    <input class="form-input" type="number" id="goalSavedInput" placeholder="0" min="0">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Deadline</label>
+                    <input class="form-input" type="date" id="goalDeadlineInput">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Icon</label>
+                    <input class="form-input" type="text" id="goalIconInput" placeholder="🎯" maxlength="2">
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="document.getElementById('goalModal').classList.remove('open')">Cancel</button>
+                <button class="btn-save" onclick="saveGoal()">Create Goal</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- External JavaScript (loaded last so DOM is ready) -->
+    <script src="script.js"></script>
+
+</body>
+</html>
